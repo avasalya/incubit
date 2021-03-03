@@ -67,22 +67,35 @@ class visualization():
         # draw segmented polygon
         cv2.drawContours(image, [vertices], contourIdx= 0, color=self.colors[obj], thickness= -1)
 
-        # draw rectangle
+        # draw (rotated) rectangle
         if bbox:
             rect = cv2.minAreaRect(vertices)
             box = cv2.boxPoints(rect)
             box = np.int0(box)
-            cv2.drawContours(image,[box],0,(0,0,255),2)
+            cv2.drawContours(image,[box],0,(0,0,0),2)
 
         # visualize semantic segmentation
         cv2.imshow(img_name, image)
 
-    def empty_mask(self, image, rescaled=True):
+    def create_mask(self, image, rescaled=True):
 
-        mask = np.zeros((image.shape[0], image.shape[1]), dtype=np.uint8)
-
+        # create empty mask
+        mask = np.ones((image.shape[0], image.shape[1]), dtype=np.uint8)
         if rescaled == True:
             mask = self.scale_image(mask)
+
+        # create mask for each class
+        mask_r = cv2.inRange(image, (0,0,255), (0,0,255))#house
+        mask_r = cv2.bitwise_and(image, image, mask = mask_r)
+
+        mask_g = cv2.inRange(image, (0,255,0), (0,255,0))#building
+        mask_g = cv2.bitwise_and(image, image, mask = mask_g)
+
+        mask_b = cv2.inRange(image, (255,0,0), (255,0,0))#garage
+        mask_b = cv2.bitwise_and(image, image, mask = mask_b)
+
+        # merge all classes mask
+        mask = mask_r + mask_g + mask_b
 
         return mask
 
@@ -98,9 +111,6 @@ class visualization():
 
                 # read image
                 rgb = cv2.imread(img)
-
-                # create empty mask
-                mask = self.empty_mask(rgb, rescaled=True)
 
                 if self.scaled == True:
                     scaled_rgb = self.scale_image(rgb)
@@ -142,19 +152,13 @@ class visualization():
                             scaled_vertices = np.array(scaled_vertices).reshape((-1,1,2))
 
                             # draw polygons on scaled image to create segmentation
-                            self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, bbox=True)
+                            self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, bbox=False)
 
-                            # print(scaled_vertices)
-                            # print(scaled_vertices[0][0])
-                            # print(scaled_vertices[-1])
-                            # print(zip(*scaled_vertices))
-
-                            # print(scaled_rgb.shape)
-                            # print(mask.shape)
-                            mask = cv2.cvtColor(scaled_rgb, cv2.COLOR_BGR2GRAY)
-                            res = cv2.bitwise_and(scaled_rgb, scaled_rgb, mask = mask)
-                            # print(type(mask))
-                            # mask = mask + scaled_rgb
+                            # create normalized segmentation mask
+                            mask = self.create_mask(scaled_rgb, rescaled=True)
+                            mask = np.asarray(mask)
+                            mask = mask/255
+                            # print(mask[500:515,570:585])
                             cv2.imshow('mask', mask)
 
 
