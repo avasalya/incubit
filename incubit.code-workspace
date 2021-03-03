@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../yolact"
+		},
+		{
+			"path": "../../catkin_ws/src/YolactROS"
+		},
+		{
+			"path": "../../Mask_RCNN"
+		},
+		{
+			"path": "../../catkin_ws/src/DF_Linemod_ROS"
+		},
+		{
+			"path": "../../RapidPoseLabels"
+		}
+	],
+	"settings": {
+		"git.ignoreLimitWarning": true
+	}
+}

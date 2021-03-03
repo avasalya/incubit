@@ -1,0 +1,15 @@
+0_1.png-annotated.json
+7_0.png-annotated.json
+6_0.png-annotated.json
+0_7.png-annotated.json
+2_0.png-annotated.json
+5_2.png-annotated.json
+4_0.png-annotated.json
+5_0.png-annotated.json
+4_8.png-annotated.json
+3_7.png-annotated.json
+5_6.png-annotated.json
+1_8.png-annotated.json
+1_2.png-annotated.json
+5_7.png-annotated.json
+5_8.png-annotated.json
