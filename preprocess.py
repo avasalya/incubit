@@ -47,7 +47,7 @@ class preprocess():
 
         #generate mask images
         self.show_mask = True
-        self.write_img = False
+        self.write_img = True
 
         #generate bbox labels
         self.write_bbox = False
@@ -99,29 +99,21 @@ class preprocess():
         if rescaled == True:
             mask = self.scale_image(mask)
 
-        # create binary mask for each class
+        # create color mask for each class
         mask_r = cv2.inRange(image, (0,0,255), (0,0,255))#house
         mask_g = cv2.inRange(image, (0,255,0), (0,255,0))#building
         mask_b = cv2.inRange(image, (255,0,0), (255,0,0))#garage
 
-        # create 1 channel mask with r,b,g channels
-        img = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        mask_r = cv2.bitwise_and(img, img, mask = mask_r)
-        mask_g = cv2.bitwise_and(img, img, mask = mask_g)
-        mask_b = cv2.bitwise_and(img, img, mask = mask_b)
+        # create labeled channel mask of each class
+        mask_r = np.where(mask_r==255, 1, mask_r)
+        mask_g = np.where(mask_g==255, 2, mask_g)
+        mask_b = np.where(mask_b==255, 3, mask_b)
 
         # merge all classes mask
         mask = np.stack((mask_b + mask_g + mask_r), axis=0)
         # print(mask.shape)
 
-        # create mask with r,b,g channels
-        mask_r = cv2.bitwise_and(image, image, mask = mask_r)
-        mask_g = cv2.bitwise_and(image, image, mask = mask_g)
-        mask_b = cv2.bitwise_and(image, image, mask = mask_b)
-        rgb_mask = np.stack((mask_b + mask_g + mask_r), axis=0)
-
-        print(mask.shape)
-        return mask, rgb_mask
+        return mask
 
     def generate_dataset(self):
 
@@ -186,7 +178,7 @@ class preprocess():
 
                             # create segmentation mask
                             if self.show_mask == True:
-                                scaled_mask, rgb_mask = self.create_mask(scaled_rgb, rescaled=True)
+                                scaled_mask = self.create_mask(scaled_rgb, rescaled=True)
                                 cv2.imshow('scaled_mask', scaled_mask)
                                 # plt.imshow(scaled_mask)
 
@@ -205,8 +197,10 @@ class preprocess():
                 # same mask images #binary mask
                 if self.write_img == True and self.show_mask == True:
                     # plt.imsave(img.replace('raw', 'mask'), scaled_mask)
+                    cv2.imwrite(img.replace('raw', 'mask'), scaled_mask)
+
                     # cv2.imwrite(img.replace('raw', 'rgbmask'), rgb_mask)
-                    cv2.imwrite(img.replace('raw', 'graymask'), scaled_mask)
+                    # cv2.imwrite(img.replace('raw', 'graymask'), scaled_mask)
 
                 # break with Esc, n to proceed next
                 key = cv2.waitKey(1) & 0xFF

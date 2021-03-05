@@ -28,7 +28,7 @@ import segmentation_models_pytorch as smp
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-CLASSES = ['houses', 'buildings', 'garages']
+CLASSES = ['houses', 'buildings', 'garages'] #1,2,3
 
 
 # Visualize preprocessed images
@@ -120,7 +120,8 @@ class Dataset(BaseDataset):
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
 
         # convert str names to class values on masks
-        self.class_values = [self.classes.index(cls.lower()) for cls in classes]
+        self.class_values = [self.classes.index(cls.lower())+1 for cls in classes]
+        # print(self.class_values)
 
         self.augmentation = augmentation
         self.preprocessing = preprocessing
@@ -131,6 +132,7 @@ class Dataset(BaseDataset):
         image = cv2.imread(self.images_fps[i])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         mask = cv2.imread(self.masks_fps[i], 0)
+        # mask = plt.imread(self.masks_fps[i])
 
         # print('before rgb shape', image.shape)
         # print('before mask shape', mask.shape)
@@ -139,15 +141,17 @@ class Dataset(BaseDataset):
         dsize = (640, 480)
         image =  cv2.resize(image, dsize, interpolation = cv2.INTER_CUBIC)
         mask =  cv2.resize(mask, dsize, interpolation = cv2.INTER_CUBIC)
+
         # # print('rgb shape', image.shape)
         # # print('mask shape', mask.shape)
 
         # extract certain classes from mask (e.g. cars)
         # NOTE assign class values to mask NOTE
+        # print('before\n',mask.shape)
         masks = [(mask == v) for v in self.class_values]
         mask = np.stack(masks, axis=-1).astype('float') #channels == totalClasses
         # mask = mask.squeeze()
-        print(mask.shape)
+        # print('after\n',mask.shape)
 
         # apply augmentations
         if self.augmentation:
@@ -173,12 +177,12 @@ image, mask = dataset[3]
 
 # visualize
 visualize(
-        image=image,
-        mask1=mask[...,0].squeeze(),
-        mask2=mask[...,1].squeeze(),
-        mask3=mask[...,2].squeeze()),
+        satellite=image,
+        houses=mask[...,0].squeeze(),
+        buildings=mask[...,1].squeeze(),
+        garages=mask[...,2].squeeze()),
 
-print(mask[...,2].squeeze())
+# print(mask[...,2].squeeze())
 
 # try:
 #     cv2.imshow('mask', mask)
