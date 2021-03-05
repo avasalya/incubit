@@ -46,8 +46,8 @@ class preprocess():
         self.target_file = target_file
 
         #generate mask images
-        self.show_mask = True
-        self.write_img = True
+        self.show_mask = False
+        self.write_img = False
 
         #generate bbox labels
         self.write_bbox = True
@@ -87,10 +87,12 @@ class preprocess():
         if draw_bbox:
             cv2.drawContours(image,[bbox],0, self.colors[obj], 2)
 
+        area = cv2.contourArea(vertices)
+
         # visualize semantic segmentation
         cv2.imshow(img_name, image)
 
-        return np.append(top_left, bottom_right)#x1,y1,x2,y2
+        return area, np.append(top_left, bottom_right)#x1,y1,x2,y2
 
     def create_mask(self, image, rescaled=True):
 
@@ -152,6 +154,8 @@ class preprocess():
                     else:
                         garages.append(len(data.labels[structure]['annotations']))
 
+                    scaled_bboxes  = []
+                    areas  = []
                     # iterate thorough each polygons
                     for premises in range(len(data.labels[structure]['annotations'])):
 
@@ -163,7 +167,6 @@ class preprocess():
                         # bbox = self.draw_polygons('raw_rgb', rgb, vertices, structure, bbox=True)
 
                         scaled_vertices = []
-                        scaled_bboxes  = []
                         if self.scaled == True:
 
                             # draw polygons on scaled image
@@ -172,9 +175,16 @@ class preprocess():
                                 scaled_vertices.append(int(vertices[v][0][1] * self.scaled_to / 100)) #y
                             scaled_vertices = np.array(scaled_vertices).reshape((-1,1,2))
 
+# NOTE all bounding boxes and corresponding areas should be written to file
+
                             # draw polygons on scaled image to create segmentation
-                            scaled_bbox = self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, draw_bbox=True)
-                            scaled_bboxes.append(scaled_bbox)
+                            area, scaled_bbox = self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, draw_bbox=True)
+
+                            for b in scaled_bbox:
+                                scaled_bboxes.append(b)
+
+                            #bbox area
+                            areas.append(area)
 
                             # create segmentation mask
                             if self.show_mask == True:
@@ -186,12 +196,15 @@ class preprocess():
                                 # scaled_mask = np.asarray(scaled_mask)
                                 # scaled_mask = scaled_mask/255
                 # plt.show()
+                print('area', areas)
 
                 # save bounding boxes
                 if self.write_bbox == True:
                     with open(img.replace('raw', 'bbox').replace('png', 'txt'), 'w') as f:
                         for b in scaled_bboxes:
-                            f.write(str(b))
+                            # print(b)
+                            f.write(str(b) + ' ')
+                        # f.write(str(area))
                         f.write('\n')
 
                 # same mask images #binary mask
@@ -203,7 +216,7 @@ class preprocess():
                     # cv2.imwrite(img.replace('raw', 'graymask'), scaled_mask)
 
                 # break with Esc, n to proceed next
-                key = cv2.waitKey(1) & 0xFF
+                key = cv2.waitKey(100000) & 0xFF
                 if key == 27:
                     print('stopped!')
                     break

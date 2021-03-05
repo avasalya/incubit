@@ -1,4 +1,4 @@
-#! /anaconda3/envs/yolact/bin/Python3
+#! /anaconda3/envs/incubit/bin/Python3
 
 #%%
 import os
@@ -49,7 +49,7 @@ def visualize(**images):
 # data path to raw image (random index)
 MAIN_DIR = os.path.dirname(os.path.join(os.path.abspath('data'),'data'))
 RGB_DIR = os.path.join(MAIN_DIR, 'rgb')
-MASK_DIR = RGB_DIR.replace('rgb','mask_bb')
+MASK_DIR = RGB_DIR.replace('rgb','mask')
 # print('MAIN_DIR:', MAIN_DIR)
 # print('RGB_DIR:', RGB_DIR)
 # print('MASK_DIR:', MASK_DIR)
@@ -59,7 +59,7 @@ MASK_DIR = RGB_DIR.replace('rgb','mask_bb')
 frames_idx = os.listdir(RGB_DIR)
 
 # create training and testing sets
-train_idx, valid_idx = train_test_split(frames_idx, test_size = 0.25)
+train_idx, valid_idx = train_test_split(frames_idx, test_size = 0.20)
 eval_idx = os.listdir(os.path.join(MAIN_DIR, 'eval'))
 # print(train_idx)
 # print(valid_idx)
@@ -206,9 +206,9 @@ def get_training_augmentation():
 
         albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
 
-        # albu.PadIfNeeded(min_height=320, min_width=320, always_apply=True, border_mode=0),
-        albu.PadIfNeeded(min_height=640, min_width=640, always_apply=False, border_mode=0),
-        # albu.RandomCrop(height=320, width=320, always_apply=True),
+        # albu.PadIfNeeded(min_height=640, min_width=640, always_apply=True, border_mode=0),
+        albu.PadIfNeeded(min_height=640, min_width=640, always_apply=True, border_mode=0),
+        # albu.RandomCrop(height=640, width=640, always_apply=True),
 
         albu.IAAAdditiveGaussianNoise(p=0.2),
         albu.IAAPerspective(p=0.5),
@@ -241,7 +241,6 @@ def get_training_augmentation():
     ]
     return albu.Compose(train_transform)
 
-
 def get_validation_augmentation():
     """Add paddings to make image shape divisible by 32"""
     test_transform = [
@@ -250,9 +249,9 @@ def get_validation_augmentation():
     ]
     return albu.Compose(test_transform)
 
+
 def to_tensor(x, **kwargs):
     return x.transpose(2, 0, 1).astype('float32')
-
 
 def get_preprocessing(preprocessing_fn):
     """Construct preprocessing transform
@@ -301,15 +300,16 @@ for i in range(1):
 DEVICE = 'cuda'
 
 # could be None for logits or 'softmax2d' for multicalss segmentation
-# ACTIVATION = 'sigmoid'
-ACTIVATION =  'softmax2d'
+# Available options are **"sigmoid"**, **"softmax"**, **"logsoftmax"**, **"softmax2d"**
+# ACTIVATION =  'softmax2d'
+ACTIVATION =  'softmax'
 
 
-# ENCODER = 'se_resnext50_32x4d'
+ENCODER = 'se_resnext50_32x4d'
 # ENCODER = 'resnet50'
 # ENCODER = 'resnet18'
 # ENCODER = 'densenet161'
-ENCODER = 'efficientnet-b4'
+# ENCODER = 'efficientnet-b4'
 
 ENCODER_WEIGHTS = 'imagenet'
 # ENCODER_WEIGHTS = 'swsl'
@@ -322,22 +322,6 @@ model = smp.FPN(
     classes=len(CLASSES),
     activation=ACTIVATION,
 )
-
-# aux_params=dict(
-#     pooling='avg',             # one of 'avg', 'max'
-#     dropout=0.5,               # dropout ratio, default is None
-#     activation='sigmoid',      # activation function, default is None
-#     classes=3,                 # define number of output labels
-# )
-
-# model = smp.Unet(
-#         encoder_name=ENCODER,        # choose encoder, e.g. mobilenet_v2 or efficientnet-b7
-#         encoder_weights=ENCODER_WEIGHTS,  # use `imagenet` pre-trained weights for encoder initialization
-#         in_channels=len(CLASSES),       # model input channels (1 for gray-scale images, 3 for RGB, etc.)
-#         activation= ACTIVATION,
-#         # aux_params=aux_params,
-# )
-
 
 if torch.cuda.is_available():
     print('Cuda available')
@@ -366,7 +350,7 @@ valid_dataset = Dataset(
     preprocessing=get_preprocessing(preprocessing_fn),
     classes=CLASSES,
 )
-valid_loader = DataLoader(valid_dataset, batch_size=1, shuffle=False, num_workers=4)
+valid_loader = DataLoader(valid_dataset, batch_size=4, shuffle=True, num_workers=4)
 
 
 loss = smp.utils.losses.DiceLoss()
@@ -381,6 +365,13 @@ metrics = [
 optimizer = torch.optim.Adam([
     dict(params=model.parameters(), lr=0.0001),
 ])
+
+# optimizer = torch.optim.Adam(model.parameters(), lr=0.005, weight_decay=0.0005)
+
+lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer,
+                                            step_size=3,
+                                            gamma=0.1)
+
 
 # create epoch runners
 # it is a simple loop of iterating over dataloader`s samples
@@ -408,7 +399,7 @@ valid_epoch = smp.utils.train.ValidEpoch(
 max_score = 0
 max_epochs = 200
 
-#train accurascy, train loss, val_accuracy, val_loss
+# log train accuracy, train loss, val_accuracy, val_loss
 x_epoch_data = []
 train_dice_loss = []
 valid_dice_loss = []
@@ -421,6 +412,8 @@ end = torch.cuda.Event(enable_timing=True)
 start.record()
 
 for i in range(0, max_epochs):
+
+    lr_scheduler.step()
 
     print('\nEpoch: {}'.format(i))
     train_logs = train_epoch.run(train_loader)
@@ -450,17 +443,17 @@ for i in range(0, max_epochs):
     #     print('Model saved!')
 
 
-    # if i == 25:
+    # if i == 100:
     #     optimizer.param_groups[0]['lr'] = 1e-5
     #     print('Decrease decoder learning rate to 1e-5!')
 
-    if i == 150:
-        optimizer.param_groups[0]['lr'] = 1e-5
-        print('Decrease decoder learning rate to 5e-6!')
+    # if i == 150:
+    #     optimizer.param_groups[0]['lr'] = 1e-6
+    #     print('Decrease decoder learning rate to 5e-6!')
 
-    if i == 175:
-        optimizer.param_groups[0]['lr'] = 1e-6
-        print('Decrease decoder learning rate to 1e-6!')
+    # if i == 150:
+    #     optimizer.param_groups[0]['lr'] = 1e-7
+    #     print('Decrease decoder learning rate to 1e-6!')
 
     # if i == 50:
     #     optimizer.param_groups[0]['lr'] = 5e-2
@@ -545,7 +538,7 @@ test_dataset_vis = Dataset(
 for i in range(5):
     n = np.random.choice(len(test_dataset))
 
-    image_vis = test_dataset_vis[n][0].astype('uint8')
+    # image_vis = test_dataset_vis[n][0].astype('uint8')
     image, gt_mask = test_dataset[n]
 
     gt_mask = gt_mask.squeeze()
@@ -579,8 +572,10 @@ for i in range(5):
 
     visualize(
         image=image_vis,
+        # image_vis=image_vis,
         ground_truth_mask=gt_mask[...,1:],
         predicted_mask=pr_mask_gray,
+        colored_pr_mask=pr_mask[...,1:],
         # predicted_mask=pr_mask[1].squeeze()
     )
 
@@ -602,16 +597,22 @@ print('pr_mask', pr_mask.shape)
 #%%
 # find contours
 # imgray = cv2.cvtColor(pr_mask[:,:,1], cv2.COLOR_BGR2GRAY)
-ret, thresh = cv2.threshold(pr_mask[...,1], 127, 255, 0)
+# ret, thresh = cv2.threshold(pr_mask[...,1], 127, 255, 0)
 
-# try:
-#     cv2.imshow('mask',pr_mask)
-#     cv2.waitKey(10000)
-# finally:
-#     cv2.destroyAllWindows()
+dsize = (640, 640)
+pr_mask =  cv2.resize(pr_mask, dsize, interpolation = cv2.INTER_CUBIC)
+
+im, contours, hierarchy = cv2.findContours(pr_mask, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
 
-# im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+try:
+    cv2.imshow('mask',pr_mask)
+    cv2.waitKey(1000)
+finally:
+    cv2.destroyAllWindows()
+
+
 
 
 
