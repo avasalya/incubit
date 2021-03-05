@@ -26,7 +26,8 @@ import segmentation_models_pytorch as smp
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-CLASSES = ['background', 'houses', 'buildings', 'garages'] #0,1,2,3
+# CLASSES = ['background', 'houses', 'buildings', 'garages'] #0,1,2,3
+CLASSES = ['houses', 'buildings', 'garages'] #1,2,3
 
 
 # Visualize preprocessed images
@@ -118,7 +119,7 @@ class Dataset(BaseDataset):
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
 
         # convert str names to class values on masks
-        self.class_values = [self.classes.index(cls.lower()) for cls in classes]
+        self.class_values = [self.classes.index(cls.lower())+1 for cls in classes]
         # print(self.class_values)
 
         self.augmentation = augmentation
@@ -281,10 +282,10 @@ for i in range(1):
     # visualize
     visualize(
             satellite=image,
-            bg=mask[...,0].squeeze(),
-            houses=mask[...,1].squeeze(),
-            buildings=mask[...,2].squeeze(),
-            garages=mask[...,3].squeeze()),
+            # bg=mask[...,0].squeeze(),
+            houses=mask[...,0].squeeze(),
+            buildings=mask[...,1].squeeze(),
+            garages=mask[...,2].squeeze()),
 
 
 #%%
@@ -299,7 +300,8 @@ DEVICE = 'cuda'
 ACTIVATION =  'softmax2d'
 
 
-ENCODER = 'se_resnext50_32x4d'
+ENCODER = 'resnet50'
+# ENCODER = 'se_resnext50_32x4d'
 # ENCODER = 'resnet18'
 #ENCODER = 'densenet161'
 
@@ -440,15 +442,15 @@ for i in range(0, max_epochs):
     #     print('Model saved!')
 
 
-    if i == 25:
+    if i == 100:
         optimizer.param_groups[0]['lr'] = 1e-5
         print('Decrease decoder learning rate to 1e-5!')
 
-    if i == 50:
+    if i == 120:
         optimizer.param_groups[0]['lr'] = 5e-6
         print('Decrease decoder learning rate to 5e-6!')
 
-    if i == 75:
+    if i == 140:
         optimizer.param_groups[0]['lr'] = 1e-6
         print('Decrease decoder learning rate to 1e-6!')
 
@@ -585,9 +587,32 @@ for i in range(5):
 #     cv2.destroyAllWindows()
 
 
+#%%
 print('image_vis', image_vis.shape)
 print('gt_mask', gt_mask.shape)
 print('pr_mask', pr_mask.shape)
+
+
+# find contours
+# imgray = cv2.cvtColor(pr_mask[:,:,1], cv2.COLOR_BGR2GRAY)
+ret, thresh = cv2.threshold(pr_mask[...,1], 127, 255, 0)
+
+# try:
+#     cv2.imshow('mask',pr_mask)
+#     cv2.waitKey(10000)
+# finally:
+#     cv2.destroyAllWindows()
+
+
+# im, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+
+
+
+
+
+
+
 
 
 # # https://github.com/qubvel/segmentation_models.pytorch/blob/master/examples/cars%20segmentation%20(camvid).ipynb
