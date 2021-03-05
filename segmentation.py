@@ -393,7 +393,7 @@ valid_epoch = smp.utils.train.ValidEpoch(
 # train model
 
 max_score = 0
-max_epochs = 50
+max_epochs = 500
 
 #train accurascy, train loss, val_accuracy, val_loss
 x_epoch_data = []
@@ -437,13 +437,13 @@ for i in range(0, max_epochs):
     #     print('Model saved!')
 
 
-    if i == 20:
+    if i == 200:
         optimizer.param_groups[0]['lr'] = 1e-5
         print('Decrease decoder learning rate to 1e-5!')
-    elif i == 30:
+    elif i == 300:
         optimizer.param_groups[0]['lr'] = 1e-6
         print('Decrease decoder learning rate to 1e-6!')
-    elif i == 40:
+    elif i == 400:
         optimizer.param_groups[0]['lr'] = 1e-7
         print('Decrease decoder learning rate to 1e-7!')
 
@@ -470,9 +470,9 @@ ax1.legend(loc='upper right')
 ax2 = fig.add_subplot(1, 2, 2)
 line1, = ax2.plot(x_epoch_data,train_acc_score,label='train')
 line2, = ax2.plot(x_epoch_data,valid_acc_score,label='validation')
-ax2.set_title("accuracy")
+ax2.set_title("iou_score")
 ax2.set_xlabel('epoch')
-ax2.set_ylabel('accuracy')
+ax2.set_ylabel('iou_score')
 ax2.legend(loc='upper left')
 
 plt.show()
@@ -529,12 +529,18 @@ for i in range(5):
     pr_mask = best_model.predict(x_tensor)
     pr_mask = (pr_mask.squeeze().cpu().numpy().round())
 
+    # dsize = (640, 320)
+    # image_vis =  cv2.resize(image, dsize, interpolation = cv2.INTER_CUBIC)
 
     visualize(
         image_vis=image_vis,
         # image=np.transpose(image, (1, 2, 0)),
         ground_truth_mask=np.transpose(gt_mask, (1, 2, 0)),
-        predicted_mask= pr_mask, #np.transpose(pr_mask, (1, 2, 0))
+        # predicted_mask= pr_mask,
+        predicted_mask1= np.transpose(pr_mask, (1, 2, 0))[...,0],
+        predicted_mask2= np.transpose(pr_mask, (1, 2, 0))[...,1],
+        predicted_mask3= np.transpose(pr_mask, (1, 2, 0))[...,2],
+        predicted_mask4= np.transpose(pr_mask, (1, 2, 0))[...,3],
     )
 
 
@@ -550,12 +556,10 @@ for i in range(5):
     # visualize(
     #     image=image_vis,
     #     ground_truth_mask=gt_mask_gray,
-    #     predicted_mask=pr_mask_gray
-    #     #predicted_mask=pr_mask[1].squeeze()
+    #     predicted_mask=pr_mask_gray,
+    #     predicted_mask=pr_mask[1].squeeze()
     # )
 
-    # dsize = (640, 320)
-    # image_vis =  cv2.resize(image, dsize, interpolation = cv2.INTER_CUBIC)
 
 
 
