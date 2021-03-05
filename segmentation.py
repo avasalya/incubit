@@ -64,7 +64,7 @@ eval_idx = os.listdir(os.path.join(MAIN_DIR, 'eval'))
 # print(valid_idx)
 # print(eval_idx)
 
-#%%
+
 """ visualize random rgb, mask images """
 # # read rgb
 # rgbPath = os.path.join(RGB_DIR,frames_idx[rand.choice(range(0,72))])
@@ -172,15 +172,15 @@ dataset = Dataset(RGB_DIR, MASK_DIR, train_idx, classes=CLASSES)
 # get some sample
 image, mask = dataset[1]
 
-# visualize
-visualize(
-        satellite=image,
-        bg=mask[...,0].squeeze(),
-        houses=mask[...,1].squeeze(),
-        buildings=mask[...,2].squeeze(),
-        garages=mask[...,3].squeeze()),
+# # visualize
+# visualize(
+#         satellite=image,
+#         bg=mask[...,0].squeeze(),
+#         houses=mask[...,1].squeeze(),
+#         buildings=mask[...,2].squeeze(),
+#         garages=mask[...,3].squeeze()),
 
-print(mask[...,1].squeeze())
+# print(mask[...,1].squeeze())
 
 # try:
 #     cv2.imshow('mask', mask)
@@ -275,7 +275,7 @@ augmented_dataset = Dataset(
 )
 
 # random augmented random transforms samples
-for i in range(3):
+for i in range(1):
     image, mask = augmented_dataset[1]
     # visualize(image=image, mask=mask.squeeze())
     # visualize
@@ -345,7 +345,7 @@ train_dataset = Dataset(
     preprocessing=get_preprocessing(preprocessing_fn),
     classes=CLASSES,
 )
-train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=12)
+train_loader = DataLoader(train_dataset, batch_size=6, shuffle=True, num_workers=12)
 
 
 valid_dataset = Dataset(
@@ -439,6 +439,18 @@ for i in range(0, max_epochs):
     #     torch.save(model, './best_model.pth')
     #     print('Model saved!')
 
+
+    if i == 25:
+        optimizer.param_groups[0]['lr'] = 1e-5
+        print('Decrease decoder learning rate to 1e-5!')
+
+    if i == 50:
+        optimizer.param_groups[0]['lr'] = 5e-6
+        print('Decrease decoder learning rate to 5e-6!')
+
+    if i == 75:
+        optimizer.param_groups[0]['lr'] = 1e-6
+        print('Decrease decoder learning rate to 1e-6!')
 
     # if i == 50:
     #     optimizer.param_groups[0]['lr'] = 5e-2
@@ -534,16 +546,16 @@ for i in range(5):
     gt_mask = np.transpose(gt_mask, (1, 2, 0))
     pr_mask = np.transpose(pr_mask, (1, 2, 0))
 
-    visualize(
-        image_vis=image_vis,
-        # image=np.transpose(image, (1, 2, 0)),
-        ground_truth_mask= gt_mask,
-        # predicted_mask= pr_mask,
-        # predicted_mask1= pr_mask[...,0],
-        predicted_mask2= pr_mask[...,1],
-        predicted_mask3= pr_mask[...,2],
-        predicted_mask4= pr_mask[...,3],
-    )
+    # visualize(
+    #     image_vis=image_vis,
+    #     # image=np.transpose(image, (1, 2, 0)),
+    #     ground_truth_mask= gt_mask,
+    #     # predicted_mask= pr_mask,
+    #     # predicted_mask1= pr_mask[...,0],
+    #     predicted_mask2= pr_mask[...,1],
+    #     predicted_mask3= pr_mask[...,2],
+    #     predicted_mask4= pr_mask[...,3],
+    # )
 
 
     gt_mask_gray = np.zeros((gt_mask.shape[0],gt_mask.shape[1]))
