@@ -64,7 +64,7 @@ eval_idx = os.listdir(os.path.join(MAIN_DIR, 'eval'))
 # print(valid_idx)
 # print(eval_idx)
 
-
+#%%
 """ visualize random rgb, mask images """
 # # read rgb
 # rgbPath = os.path.join(RGB_DIR,frames_idx[rand.choice(range(0,72))])
@@ -119,7 +119,7 @@ class Dataset(BaseDataset):
 
         # convert str names to class values on masks
         self.class_values = [self.classes.index(cls.lower()) for cls in classes]
-        print(self.class_values)
+        # print(self.class_values)
 
         self.augmentation = augmentation
         self.preprocessing = preprocessing
@@ -197,40 +197,40 @@ def get_training_augmentation():
 
         albu.HorizontalFlip(p=0.5),
 
-        # albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
+        albu.ShiftScaleRotate(scale_limit=0.5, rotate_limit=0, shift_limit=0.1, p=1, border_mode=0),
 
         # albu.PadIfNeeded(min_height=320, min_width=320, always_apply=True, border_mode=0),
-        # albu.RandomCrop(height=320, width=320, always_apply=True),
         albu.PadIfNeeded(min_height=640, min_width=640, always_apply=False, border_mode=0),
+        # albu.RandomCrop(height=320, width=320, always_apply=True),
 
-        # albu.IAAAdditiveGaussianNoise(p=0.2),
-        # albu.IAAPerspective(p=0.5),
+        albu.IAAAdditiveGaussianNoise(p=0.2),
+        albu.IAAPerspective(p=0.5),
 
-        # albu.OneOf(
-        #     [
-        #         albu.CLAHE(p=1),
-        #         albu.RandomBrightness(p=1),
-        #         albu.RandomGamma(p=1),
-        #     ],
-        #     p=0.9,
-        # ),
+        albu.OneOf(
+            [
+                albu.CLAHE(p=1),
+                albu.RandomBrightness(p=1),
+                albu.RandomGamma(p=1),
+            ],
+            p=0.9,
+        ),
 
-        # albu.OneOf(
-        #     [
-        #         albu.IAASharpen(p=1),
-        #         albu.Blur(blur_limit=3, p=1),
-        #         albu.MotionBlur(blur_limit=3, p=1),
-        #     ],
-        #     p=0.9,
-        # ),
+        albu.OneOf(
+            [
+                albu.IAASharpen(p=1),
+                albu.Blur(blur_limit=3, p=1),
+                albu.MotionBlur(blur_limit=3, p=1),
+            ],
+            p=0.9,
+        ),
 
-        # albu.OneOf(
-        #     [
-        #         albu.RandomContrast(p=1),
-        #         albu.HueSaturationValue(p=1),
-        #     ],
-        #     p=0.9,
-        # ),
+        albu.OneOf(
+            [
+                albu.RandomContrast(p=1),
+                albu.HueSaturationValue(p=1),
+            ],
+            p=0.9,
+        ),
     ]
     return albu.Compose(train_transform)
 
@@ -292,8 +292,11 @@ for i in range(3):
 # Create model
 
 # # create segmentation model with pretrained encoder
-ACTIVATION =  'softmax2d'  #'sigmoid' # could be None for logits or 'softmax2d' for multicalss segmentation
 DEVICE = 'cuda'
+
+# could be None for logits or 'softmax2d' for multicalss segmentation
+# ACTIVATION = 'sigmoid'
+ACTIVATION =  'softmax2d'
 
 
 ENCODER = 'se_resnext50_32x4d'
@@ -393,7 +396,7 @@ valid_epoch = smp.utils.train.ValidEpoch(
 # train model
 
 max_score = 0
-max_epochs = 500
+max_epochs = 150
 
 #train accurascy, train loss, val_accuracy, val_loss
 x_epoch_data = []
@@ -437,15 +440,15 @@ for i in range(0, max_epochs):
     #     print('Model saved!')
 
 
-    if i == 200:
-        optimizer.param_groups[0]['lr'] = 1e-5
-        print('Decrease decoder learning rate to 1e-5!')
-    elif i == 300:
-        optimizer.param_groups[0]['lr'] = 1e-6
-        print('Decrease decoder learning rate to 1e-6!')
-    elif i == 400:
-        optimizer.param_groups[0]['lr'] = 1e-7
-        print('Decrease decoder learning rate to 1e-7!')
+    # if i == 50:
+    #     optimizer.param_groups[0]['lr'] = 5e-2
+    #     print('Decrease decoder learning rate to 1e-5!')
+    # elif i == 100:
+    #     optimizer.param_groups[0]['lr'] = 1e-2
+    #     print('Decrease decoder learning rate to 1e-6!')
+    # elif i == 400:
+    #     optimizer.param_groups[0]['lr'] = 1e-7
+    #     print('Decrease decoder learning rate to 1e-7!')
 
 end.record()
 
@@ -455,7 +458,7 @@ torch.cuda.synchronize()
 time = start.elapsed_time(end)
 print("Time elapsed: " + str(start.elapsed_time(end) / 60000) + " minutes")  # millisecond
 
-#%% plot loss
+# plot loss
 
 fig = plt.figure(figsize=(14, 5))
 
@@ -528,37 +531,36 @@ for i in range(5):
     x_tensor = torch.from_numpy(image).to(DEVICE).unsqueeze(0)
     pr_mask = best_model.predict(x_tensor)
     pr_mask = (pr_mask.squeeze().cpu().numpy().round())
-
-    # dsize = (640, 320)
-    # image_vis =  cv2.resize(image, dsize, interpolation = cv2.INTER_CUBIC)
+    gt_mask = np.transpose(gt_mask, (1, 2, 0))
+    pr_mask = np.transpose(pr_mask, (1, 2, 0))
 
     visualize(
         image_vis=image_vis,
         # image=np.transpose(image, (1, 2, 0)),
-        ground_truth_mask=np.transpose(gt_mask, (1, 2, 0)),
+        ground_truth_mask= gt_mask,
         # predicted_mask= pr_mask,
-        predicted_mask1= np.transpose(pr_mask, (1, 2, 0))[...,0],
-        predicted_mask2= np.transpose(pr_mask, (1, 2, 0))[...,1],
-        predicted_mask3= np.transpose(pr_mask, (1, 2, 0))[...,2],
-        predicted_mask4= np.transpose(pr_mask, (1, 2, 0))[...,3],
+        # predicted_mask1= pr_mask[...,0],
+        predicted_mask2= pr_mask[...,1],
+        predicted_mask3= pr_mask[...,2],
+        predicted_mask4= pr_mask[...,3],
     )
 
 
-    # gt_mask_gray = np.zeros((gt_mask.shape[0],gt_mask.shape[1]))
+    gt_mask_gray = np.zeros((gt_mask.shape[0],gt_mask.shape[1]))
 
-    # for ii in range(gt_mask.shape[2]):
-    #     gt_mask_gray = gt_mask_gray + 1/gt_mask.shape[2]*ii*gt_mask[:,:,ii]
+    for ii in range(gt_mask.shape[2]):
+        gt_mask_gray = gt_mask_gray + 1/gt_mask.shape[2]*ii*gt_mask[:,:,ii]
 
-    # pr_mask_gray = np.zeros((pr_mask.shape[0],pr_mask.shape[1]))
-    # for ii in range(pr_mask.shape[2]):
-    #     pr_mask_gray = pr_mask_gray + 1/pr_mask.shape[2]*ii*pr_mask[:,:,ii]
+    pr_mask_gray = np.zeros((pr_mask.shape[0],pr_mask.shape[1]))
+    for ii in range(pr_mask.shape[2]):
+        pr_mask_gray = pr_mask_gray + 1/pr_mask.shape[2]*ii*pr_mask[:,:,ii]
 
-    # visualize(
-    #     image=image_vis,
-    #     ground_truth_mask=gt_mask_gray,
-    #     predicted_mask=pr_mask_gray,
-    #     predicted_mask=pr_mask[1].squeeze()
-    # )
+    visualize(
+        image=image_vis,
+        ground_truth_mask=gt_mask_gray,
+        predicted_mask=pr_mask_gray,
+        # predicted_mask=pr_mask[1].squeeze()
+    )
 
 
 
@@ -571,10 +573,9 @@ for i in range(5):
 #     cv2.destroyAllWindows()
 
 
-print(image_vis.shape)
-print(image.shape)
-print(gt_mask.shape)
-print(pr_mask.shape)
+print('image_vis', image_vis.shape)
+print('gt_mask', gt_mask.shape)
+print('pr_mask', pr_mask.shape)
 
 
 # # https://github.com/qubvel/segmentation_models.pytorch/blob/master/examples/cars%20segmentation%20(camvid).ipynb
