@@ -26,8 +26,8 @@ import segmentation_models_pytorch as smp
 
 
 os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-# CLASSES = ['background', 'houses', 'buildings', 'garages'] #0,1,2,3
-CLASSES = ['houses', 'buildings', 'garages'] #1,2,3
+CLASSES = ['background', 'houses', 'buildings', 'garages'] #0,1,2,3
+# CLASSES = ['houses', 'buildings', 'garages'] #1,2,3
 
 
 # Visualize preprocessed images
@@ -49,7 +49,7 @@ def visualize(**images):
 # data path to raw image (random index)
 MAIN_DIR = os.path.dirname(os.path.join(os.path.abspath('data'),'data'))
 RGB_DIR = os.path.join(MAIN_DIR, 'rgb')
-MASK_DIR = RGB_DIR.replace('rgb','mask')
+MASK_DIR = RGB_DIR.replace('rgb','mask_bb')
 # print('MAIN_DIR:', MAIN_DIR)
 # print('RGB_DIR:', RGB_DIR)
 # print('MASK_DIR:', MASK_DIR)
@@ -119,7 +119,8 @@ class Dataset(BaseDataset):
         self.masks_fps = [os.path.join(masks_dir, image_id) for image_id in self.ids]
 
         # convert str names to class values on masks
-        self.class_values = [self.classes.index(cls.lower())+1 for cls in classes]
+        # self.class_values = [self.classes.index(cls.lower())+1 for cls in classes]
+        self.class_values = [self.classes.index(cls.lower()) for cls in classes]#with bg as class
         # print(self.class_values)
 
         self.augmentation = augmentation
@@ -151,6 +152,11 @@ class Dataset(BaseDataset):
         # mask = mask.squeeze()
         # print('after\n',mask.shape)
 
+        # # add background if mask is not binary
+        # if mask.shape[-1] != 1:
+        #     background = 1 - mask.sum(axis=-1, keepdims=True)
+        #     mask = np.concatenate((mask, background), axis=-1)
+
         # apply augmentations
         if self.augmentation:
             sample = self.augmentation(image=image, mask=mask)
@@ -168,10 +174,10 @@ class Dataset(BaseDataset):
 
 
 # sample trainDataset
-dataset = Dataset(RGB_DIR, MASK_DIR, train_idx, classes=CLASSES)
+# dataset = Dataset(RGB_DIR, MASK_DIR, train_idx, classes=CLASSES)
 
 # get some sample
-image, mask = dataset[1]
+# image, mask = dataset[1]
 
 # # visualize
 # visualize(
@@ -282,13 +288,12 @@ for i in range(1):
     # visualize
     visualize(
             satellite=image,
-            # bg=mask[...,0].squeeze(),
-            houses=mask[...,0].squeeze(),
-            buildings=mask[...,1].squeeze(),
-            garages=mask[...,2].squeeze()),
+            bg=mask[...,0].squeeze(),
+            houses=mask[...,1].squeeze(),
+            buildings=mask[...,2].squeeze(),
+            garages=mask[...,3].squeeze()),
 
 
-#%%
 
 # Create model
 
@@ -300,13 +305,16 @@ DEVICE = 'cuda'
 ACTIVATION =  'softmax2d'
 
 
-ENCODER = 'resnet50'
 # ENCODER = 'se_resnext50_32x4d'
+# ENCODER = 'resnet50'
 # ENCODER = 'resnet18'
-#ENCODER = 'densenet161'
+# ENCODER = 'densenet161'
+ENCODER = 'efficientnet-b4'
 
 ENCODER_WEIGHTS = 'imagenet'
 # ENCODER_WEIGHTS = 'swsl'
+
+n_classes = 1 if len(CLASSES) == 1 else (len(CLASSES) + 1)  # case for binary and multiclass segmentation
 
 model = smp.FPN(
     encoder_name=ENCODER,
@@ -347,7 +355,7 @@ train_dataset = Dataset(
     preprocessing=get_preprocessing(preprocessing_fn),
     classes=CLASSES,
 )
-train_loader = DataLoader(train_dataset, batch_size=6, shuffle=True, num_workers=12)
+train_loader = DataLoader(train_dataset, batch_size=4, shuffle=True, num_workers=12)
 
 
 valid_dataset = Dataset(
@@ -394,11 +402,11 @@ valid_epoch = smp.utils.train.ValidEpoch(
 )
 
 
-#%%
+
 # train model
 
 max_score = 0
-max_epochs = 150
+max_epochs = 200
 
 #train accurascy, train loss, val_accuracy, val_loss
 x_epoch_data = []
@@ -442,15 +450,15 @@ for i in range(0, max_epochs):
     #     print('Model saved!')
 
 
-    if i == 100:
-        optimizer.param_groups[0]['lr'] = 1e-5
-        print('Decrease decoder learning rate to 1e-5!')
+    # if i == 25:
+    #     optimizer.param_groups[0]['lr'] = 1e-5
+    #     print('Decrease decoder learning rate to 1e-5!')
 
-    if i == 120:
-        optimizer.param_groups[0]['lr'] = 5e-6
+    if i == 150:
+        optimizer.param_groups[0]['lr'] = 1e-5
         print('Decrease decoder learning rate to 5e-6!')
 
-    if i == 140:
+    if i == 175:
         optimizer.param_groups[0]['lr'] = 1e-6
         print('Decrease decoder learning rate to 1e-6!')
 
@@ -571,7 +579,7 @@ for i in range(5):
 
     visualize(
         image=image_vis,
-        ground_truth_mask=gt_mask_gray,
+        ground_truth_mask=gt_mask[...,1:],
         predicted_mask=pr_mask_gray,
         # predicted_mask=pr_mask[1].squeeze()
     )
@@ -587,12 +595,11 @@ for i in range(5):
 #     cv2.destroyAllWindows()
 
 
-#%%
 print('image_vis', image_vis.shape)
 print('gt_mask', gt_mask.shape)
 print('pr_mask', pr_mask.shape)
 
-
+#%%
 # find contours
 # imgray = cv2.cvtColor(pr_mask[:,:,1], cv2.COLOR_BGR2GRAY)
 ret, thresh = cv2.threshold(pr_mask[...,1], 127, 255, 0)

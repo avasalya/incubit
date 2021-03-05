@@ -50,7 +50,7 @@ class preprocess():
         self.write_img = True
 
         #generate bbox labels
-        self.write_bbox = False
+        self.write_bbox = True
 
         # get list of images path
         with open(os.path.join(self.dirPath, self.target_file), 'r') as f:
@@ -85,7 +85,7 @@ class preprocess():
         bottom_right = np.max(bbox, axis=0)
 
         if draw_bbox:
-            cv2.drawContours(image,[bbox],0,(255,100,100),2)
+            cv2.drawContours(image,[bbox],0, self.colors[obj], 2)
 
         # visualize semantic segmentation
         cv2.imshow(img_name, image)
@@ -173,7 +173,7 @@ class preprocess():
                             scaled_vertices = np.array(scaled_vertices).reshape((-1,1,2))
 
                             # draw polygons on scaled image to create segmentation
-                            scaled_bbox = self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, draw_bbox=False)
+                            scaled_bbox = self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, draw_bbox=True)
                             scaled_bboxes.append(scaled_bbox)
 
                             # create segmentation mask
@@ -197,7 +197,7 @@ class preprocess():
                 # same mask images #binary mask
                 if self.write_img == True and self.show_mask == True:
                     # plt.imsave(img.replace('raw', 'mask'), scaled_mask)
-                    cv2.imwrite(img.replace('raw', 'mask'), scaled_mask)
+                    cv2.imwrite(img.replace('raw', 'mask_bb'), scaled_mask)
 
                     # cv2.imwrite(img.replace('raw', 'rgbmask'), rgb_mask)
                     # cv2.imwrite(img.replace('raw', 'graymask'), scaled_mask)
