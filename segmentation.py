@@ -68,7 +68,7 @@ eval_idx = os.listdir(os.path.join(MAIN_DIR, 'eval'))
 
 """ visualize random rgb, mask images """
 # # read rgb
-# rgbPath = os.path.join(RGB_DIR,frames_idx[rand.choice(range(0,72))])
+# rgbPath = os.path.join(RGB_DIR,frames_idx[rand.choice(range(0,len(frames_idx))])
 # rgb = cv2.imread(rgbPath)
 # print(rgbPath)
 # # print(rgb.shape)

@@ -12,7 +12,7 @@
 	],
 	"settings": {
 		"git.ignoreLimitWarning": true,
-		"python.pythonPath": "/home/ash/anaconda3/envs/yolact/bin/python",
+		"python.pythonPath": "/home/ash/anaconda3/envs/maskrcnn/bin/python",
 		"jupyter.jupyterServerType": "local"
 	}
 }

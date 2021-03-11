@@ -142,6 +142,11 @@ class preprocess():
                 fileNo = os.path.join(self.labelPath, fileNo)
                 data = pd.read_json(fileNo)
 
+# NOTE all bounding boxes and corresponding areas should be written to file
+
+                scaled_bboxes  = []
+                areas  = []
+
                 # iterate through each structure
                 for structure in range(len(data.labels)):
                     print('found {} {}'.format(len(data.labels[structure]['annotations']), data.labels[structure]['name']))
@@ -154,8 +159,6 @@ class preprocess():
                     else:
                         garages.append(len(data.labels[structure]['annotations']))
 
-                    scaled_bboxes  = []
-                    areas  = []
                     # iterate thorough each polygons
                     for premises in range(len(data.labels[structure]['annotations'])):
 
@@ -174,8 +177,6 @@ class preprocess():
                                 scaled_vertices.append(int(vertices[v][0][0] * self.scaled_to / 100)) #x
                                 scaled_vertices.append(int(vertices[v][0][1] * self.scaled_to / 100)) #y
                             scaled_vertices = np.array(scaled_vertices).reshape((-1,1,2))
-
-# NOTE all bounding boxes and corresponding areas should be written to file
 
                             # draw polygons on scaled image to create segmentation
                             area, scaled_bbox = self.draw_polygons('scaled_rgb', scaled_rgb, scaled_vertices, structure, draw_bbox=True)
@@ -197,6 +198,7 @@ class preprocess():
                                 # scaled_mask = scaled_mask/255
                 # plt.show()
                 print('area', areas)
+                print('bb', scaled_bboxes)
 
                 # save bounding boxes
                 if self.write_bbox == True:
